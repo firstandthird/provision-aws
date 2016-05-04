@@ -1,0 +1,51 @@
+nginx:
+  container_name: 'nginx'
+  image: 'firstandthird/nginx'
+  restart: 'always'
+  log_driver: 'awslogs'
+  log_opt:
+    awslogs-region: '${AWS_REGION}'
+    awslogs-group: '${ENVIRONMENT}-nginx'
+    awslogs-stream: '${SERVER_NAME}-nginx'
+  volumes:
+    - '/etc/nginx/conf.d'
+    - '/etc/nginx/certs'
+  ports:
+    - '80:80'
+    - '443:443'
+dockergen:
+  container_name: 'docker-gen'
+  command: '-notify-sighup nginx -watch -only-exposed /etc/docker-gen/templates/nginx.tmpl /etc/nginx/conf.d/default.conf'
+  image: 'firstandthird/nginx-gen'
+  restart: 'always'
+  log_driver: 'awslogs'
+  log_opt:
+    awslogs-region: '${AWS_REGION}'
+    awslogs-group: '${ENVIRONMENT}'
+    awslogs-stream: '${SERVER_NAME}-docker-gen'
+  volumes_from:
+    - 'nginx'
+  volumes:
+    - '/var/run/docker.sock:/tmp/docker.sock:ro'
+deploy:
+  container_name: 'deploy'
+  image: 'shipment/deploy'
+  restart: 'always'
+  environment:
+    VIRTUAL_HOST: 'deploy.${ENV_TYPE}-${SERVER_NAME}.${DOMAIN}'
+    ROOT_HOST: '${ENVIRONMENT}-${SERVER_NAME}.${DOMAIN}'
+    NODE_ENV: '${ENV_TYPE}'
+    GH_USERNAME: '${GH_USER}'
+    GH_TOKEN: '${GH_TOKEN}'
+    SECRET: '${DEPLOY_SECRET}'
+    ENVIRONMENT: '${ENVIRONMENT}'
+    SERVER_NAME: '${SERVER_NAME}'
+  log_driver: 'awslogs'
+  log_opt:
+    awslogs-region: '${AWS_REGION}'
+    awslogs-group: '${ENVIRONMENT}'
+    awslogs-stream: '${SERVER_NAME}-deploy'
+  ports:
+    - '5000'
+  volumes:
+    - '/var/run/docker.sock:/var/run/docker.sock'
