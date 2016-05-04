@@ -65,6 +65,11 @@ if [[ -n "$AUTO_DEPLOY" ]]; then
 else
   log "Auto Deploy: No"
 fi
+if [[ -n "$MONGO" ]]; then
+  log "Mongo: Yes"
+else
+  log "Mongo: No"
+fi
 
 FULL_NAME=${ENVIRONMENT}-${SERVER_NAME}
 log "Full Server Name: $FULL_NAME"
@@ -166,6 +171,24 @@ fi
 if [[ -n "$AUTO_DEPLOY" ]]; then
   log "Setting up deploy"
   compose up -d deploy
+  test $? -eq 0 || abort "setting up deploy failed"
+fi
+
+if [[ -n "$MONGO" ]]; then
+  out=$(docker inspect --type container mongo)
+  if [[ "$?" == 1 ]]; then
+    log "Setting up mongo"
+    docker run \
+      -d \
+      -v /data/db:/data/db \
+      --log-driver awslogs \
+      --log-opt awslogs-group=$ENVIRONMENT \
+      --log-opt awslogs-stream=mongo \
+      -p 27017:27017 \
+      --name mongo \
+      mongo --storageEngine wiredTiger
+    test $? -eq 0 || abort "creating mongo failed"
+  fi
 fi
 
 log "Getting Public DNS"
