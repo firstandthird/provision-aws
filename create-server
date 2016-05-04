@@ -5,6 +5,7 @@ set -e
 log() {
   echo -e "  \e[33m$@\e[39m"
 }
+DIRNAME=$(dirname ${BASH_SOURCE[0]})
 
 checkvar() {
   local name=$1
@@ -12,7 +13,7 @@ checkvar() {
   local default=$3
   if [[ -z "${!var}" ]]; then
     if [[ -n "$default" ]]; then
-      declare "$var=$default"
+      eval "$var=$default"
     else
       log "must set $var"
       exit 1
@@ -29,10 +30,14 @@ checkvar "Server Name" "SERVER_NAME" #apps1
 checkvar "Environment" "ENVIRONMENT" #prod
 checkvar "Instance" "INSTANCE_TYPE" "t2.medium"
 checkvar "Size" "SIZE" 20
-#checkvar "Security Group" "SECURITY_GROUP"
-#checkvar "VPC" "VPC_ID"
-#checkvar "Subnet" "SUBNET_ID"
-#checkvar "Zone" "ZONE"
+if [[ -n "$VPC_ID" ]]; then
+  checkvar "VPC" "VPC_ID"
+  checkvar "Security Group" "SECURITY_GROUP"
+  checkvar "Subnet" "SUBNET_ID"
+  checkvar "Zone" "ZONE"
+else
+  log "VPC: auto generated"
+fi
 checkvar "Log Access Key" "LOG_ACCESS_KEY"
 checkvar "Log Secret Key" "LOG_SECRET_KEY"
 if [[ -n "$LOAD_BALANCER" ]]; then
@@ -52,7 +57,7 @@ else
   log "Auto Deploy: No"
 fi
 
-FULL_NAME=${ENVIRONMENT}_${SERVER_NAME}
+FULL_NAME=${ENVIRONMENT}-${SERVER_NAME}
 log "Full Server Name: $FULL_NAME"
 
 if [[ -n "$DEBUG" ]]; then
@@ -79,37 +84,67 @@ if [[ -n "$LOAD_BALANCER" ]]; then
   create_log_group $ENVIRONMENT-nginx
 fi
 
-log "Creating EC2 Instance"
-echo $AWS_REGION
-docker-machine -s $MACHINE_PATH create \
-  --driver amazonec2 \
-  --amazonec2-root-size $SIZE \
-  --amazonec2-region $AWS_REGION \
-  --amazonec2-instance-type $INSTANCE_TYPE \
-  --engine-env "AWS_ACCESS_KEY_ID=$LOG_ACCESS_KEY" \
-  --engine-env "AWS_SECRET_ACCESS_KEY=$LOG_SECRET_KEY" \
-  --engine-env "AWS_DEFAULT_REGION=$AWS_REGION" \
-  --engine-opt "log-driver=awslogs" \
-  --engine-opt "log-opt awslogs-group=$ENVIRONMENT" \
-  $FULL_NAME
+res=$(docker-machine -s $MACHINE_PATH inspect $FULL_NAME)
+if [[ "$?" == 1 ]]; then
+  log "Creating EC2 Instance"
+  #TODO: make this better
+  if [[ -n "$VPC_ID" ]]; then
+    docker-machine -s $MACHINE_PATH create \
+      --driver amazonec2 \
+      --amazonec2-root-size $SIZE \
+      --amazonec2-region $AWS_REGION \
+      --amazonec2-instance-type $INSTANCE_TYPE \
+      --amazonec2-vpc-id $VPC_ID \
+      --amazonec2-zone $ZONE \
+      --amazonec2-subnet-id $SUBNET_ID \
+      --amazonec2-security-group $SECURITY_GROUP \
+      --engine-env "AWS_ACCESS_KEY_ID=$LOG_ACCESS_KEY" \
+      --engine-env "AWS_SECRET_ACCESS_KEY=$LOG_SECRET_KEY" \
+      --engine-env "AWS_DEFAULT_REGION=$AWS_REGION" \
+      --engine-opt "log-driver=awslogs" \
+      --engine-opt "log-opt awslogs-group=$ENVIRONMENT" \
+      $FULL_NAME
+  else
+    docker-machine -s $MACHINE_PATH create \
+      --driver amazonec2 \
+      --amazonec2-root-size $SIZE \
+      --amazonec2-region $AWS_REGION \
+      --amazonec2-instance-type $INSTANCE_TYPE \
+      --engine-env "AWS_ACCESS_KEY_ID=$LOG_ACCESS_KEY" \
+      --engine-env "AWS_SECRET_ACCESS_KEY=$LOG_SECRET_KEY" \
+      --engine-env "AWS_DEFAULT_REGION=$AWS_REGION" \
+      --engine-opt "log-driver=awslogs" \
+      --engine-opt "log-opt awslogs-group=$ENVIRONMENT" \
+      $FULL_NAME
+  fi
 
-  #--amazonec2-vpc-id $VPC_ID \
-  #--amazonec2-zone $ZONE \
-  #--amazonec2-subnet-id $SUBNET_ID \
-  #--amazonec2-security-group $SECURITY_GROUP \
+  log "Installing htop"
+  docker-machine -s $MACHINE_PATH ssh $FULL_NAME "sudo apt-get install -y htop"
+fi
 
-log "Installing htop"
-docker-machine -s $MACHINE_PATH ssh $FULL_NAME "sudo apt-get install -y htop"
+eval $(docker-machine -s $MACHINE_PATH env $FULL_NAME)
 
+compose() {
+  cmd=$@
+  SERVER_NAME=$SERVER_NAME \
+    ENVIRONMENT=$ENVIRONMENT \
+    DEPLOY_SECRET=$DEPLOY_SECRET \
+    DOMAIN=$DOMAIN \
+    GH_TOKEN=$GH_TOKEN \
+    GH_USER=$GH_USER \
+    NODE_ENV=$NODE_ENV \
+    docker-compose -f $DIRNAME/docker-compose.yml $@
+}
+compose pull
 if [[ -n "$LOAD_BALANCER" ]]; then
   log "Setting up load balancer"
-  docker-compose -f docker-compose.yml up -d dockergen
-  docker-compose -f docker-compose.yml up -d nginx
+  compose up -d dockergen
+  compose up -d nginx
 fi
 
 if [[ -n "$AUTO_DEPLOY" ]]; then
   log "Setting up deploy"
-  docker-compose -f docker-compose.yml up -d deploy
+  compose up -d deploy
 fi
 
 log "Getting Public DNS"

@@ -32,9 +32,9 @@ deploy:
   image: 'shipment/deploy'
   restart: 'always'
   environment:
-    VIRTUAL_HOST: 'deploy.${ENV_TYPE}-${SERVER_NAME}.${DOMAIN}'
+    VIRTUAL_HOST: 'deploy.${ENVIRONMENT}-${SERVER_NAME}.${DOMAIN}'
     ROOT_HOST: '${ENVIRONMENT}-${SERVER_NAME}.${DOMAIN}'
-    NODE_ENV: '${ENV_TYPE}'
+    NODE_ENV: '${NODE_ENV}'
     GH_USERNAME: '${GH_USER}'
     GH_TOKEN: '${GH_TOKEN}'
     SECRET: '${DEPLOY_SECRET}'
