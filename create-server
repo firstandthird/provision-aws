@@ -158,14 +158,18 @@ compose() {
     GH_TOKEN=$GH_TOKEN \
     GH_USER=$GH_USER \
     NODE_ENV=$NODE_ENV \
+    AWS_REGION=$AWS_REGION \
     docker-compose -f $DIRNAME/docker-compose.yml $@
 }
 compose pull
+test $? -eq 0 || abort "compose pull failed"
 
 if [[ -n "$LOAD_BALANCER" ]]; then
   log "Setting up load balancer"
   compose up -d dockergen
+  test $? -eq 0 || abort "setting up dockergen failed"
   compose up -d nginx
+  test $? -eq 0 || abort "setting up nginx failed"
 fi
 
 if [[ -n "$AUTO_DEPLOY" ]]; then
