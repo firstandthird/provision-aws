@@ -79,9 +79,13 @@ create_log_group() {
     aws logs create-log-group --log-group-name $name
   fi
 }
+
 create_log_group $ENVIRONMENT
+#TODO: create app metrics
+
 if [[ -n "$LOAD_BALANCER" ]]; then
   create_log_group $ENVIRONMENT-nginx
+  #TODO: create load balancer metrics
 fi
 
 res=$(docker-machine -s $MACHINE_PATH inspect $FULL_NAME)
@@ -122,8 +126,10 @@ if [[ "$?" == 1 ]]; then
   docker-machine -s $MACHINE_PATH ssh $FULL_NAME "sudo apt-get install -y htop"
 fi
 
+
 eval $(docker-machine -s $MACHINE_PATH env $FULL_NAME)
 
+#TODO download compose from github
 compose() {
   cmd=$@
   SERVER_NAME=$SERVER_NAME \
