@@ -1,10 +1,13 @@
 #!/bin/bash
-set -e
 #Requires: aws cli, docker, docker-machine, docker-compose
-
 log() {
   echo -e "  \e[33m$@\e[39m"
 }
+abort() {
+  log $@
+  exit 1
+}
+
 DIRNAME=$(dirname ${BASH_SOURCE[0]})
 
 checkvar() {
@@ -77,6 +80,7 @@ create_log_group() {
   if [[ -z "$out" ]]; then
     log "Creating Log Group: $name"
     aws logs create-log-group --log-group-name $name
+    test $? -eq 0 || abort "create log group failed"
   fi
 }
 
@@ -88,7 +92,7 @@ if [[ -n "$LOAD_BALANCER" ]]; then
   #TODO: create load balancer metrics
 fi
 
-res=$(docker-machine -s $MACHINE_PATH inspect $FULL_NAME)
+out=$(docker-machine -s $MACHINE_PATH ls | grep $FULL_NAME)
 if [[ "$?" == 1 ]]; then
   log "Creating EC2 Instance"
   #TODO: make this better
@@ -121,13 +125,17 @@ if [[ "$?" == 1 ]]; then
       --engine-opt "log-opt awslogs-group=$ENVIRONMENT" \
       $FULL_NAME
   fi
+  test $? -eq 0 || abort "docker-machine failed"
 
   log "Installing htop"
   docker-machine -s $MACHINE_PATH ssh $FULL_NAME "sudo apt-get install -y htop"
+
+  test $? -eq 0 || abort "htop install failed"
 fi
 
 
 eval $(docker-machine -s $MACHINE_PATH env $FULL_NAME)
+test $? -eq 0 || abort "failed to set env"
 
 #TODO download compose from github
 compose() {
@@ -142,6 +150,7 @@ compose() {
     docker-compose -f $DIRNAME/docker-compose.yml $@
 }
 compose pull
+
 if [[ -n "$LOAD_BALANCER" ]]; then
   log "Setting up load balancer"
   compose up -d dockergen
