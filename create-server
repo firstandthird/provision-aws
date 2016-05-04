@@ -26,9 +26,15 @@ checkvar() {
 }
 
 checkvar "Machine Path" "MACHINE_PATH"
-checkvar "AWS Access Key ID" "AWS_ACCESS_KEY_ID"
-checkvar "AWS Secret Access Key" "AWS_SECRET_ACCESS_KEY"
+if [[ -n "$AWS_PROFILE" ]]; then
+  checkvar "AWS Profile" "AWS_PROFILE"
+  AWS_DEFAULT_PROFILE=$AWS_PROFILE
+else
+  checkvar "AWS Access Key ID" "AWS_ACCESS_KEY_ID"
+  checkvar "AWS Secret Access Key" "AWS_SECRET_ACCESS_KEY"
+fi
 checkvar "AWS Region" "AWS_REGION" "us-east-1"
+AWS_DEFAULT_REGION=$AWS_REGION
 checkvar "Server Name" "SERVER_NAME" #apps1
 checkvar "Environment" "ENVIRONMENT" #prod
 checkvar "Instance" "INSTANCE_TYPE" "t2.medium"
