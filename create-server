@@ -188,6 +188,7 @@ if [[ -n "$MONGO" ]]; then
       --log-driver awslogs \
       --log-opt awslogs-group=$ENVIRONMENT \
       --log-opt awslogs-stream=mongo \
+      --restart=always \
       -p 27017:27017 \
       --name mongo \
       mongo --storageEngine wiredTiger
