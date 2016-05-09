@@ -70,6 +70,11 @@ if [[ -n "$MONGO" ]]; then
 else
   log "Mongo: No"
 fi
+if [[ -n "$LETSENCRYPT" ]]; then
+  log "Lets Encrypt: Yes"
+else
+  log "Lets Encrypt: No"
+fi
 
 FULL_NAME=${ENVIRONMENT}-${SERVER_NAME}
 log "Full Server Name: $FULL_NAME"
@@ -170,6 +175,12 @@ if [[ -n "$LOAD_BALANCER" ]]; then
   test $? -eq 0 || abort "setting up dockergen failed"
   compose up -d nginx
   test $? -eq 0 || abort "setting up nginx failed"
+fi
+
+if [[ -n "$LETSENCRYPT" ]]; then
+  log "Setting up lets encrypt"
+  compose up -d letsencrypt
+  test $? -eq 0 || abort "setting up lets encrypt failed"
 fi
 
 if [[ -n "$AUTO_DEPLOY" ]]; then
