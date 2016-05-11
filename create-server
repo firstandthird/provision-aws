@@ -37,6 +37,11 @@ checkvar "AWS Region" "AWS_REGION" "us-east-1"
 AWS_DEFAULT_REGION=$AWS_REGION
 checkvar "Server Name" "SERVER_NAME" #apps1
 checkvar "Environment" "ENVIRONMENT" #prod
+FULL_NAME=${ENVIRONMENT}-${SERVER_NAME}
+log "Full Server Name: $FULL_NAME"
+checkvar "Root Domain" "ROOT_DOMAIN"
+DOMAIN="${FULL_NAME}.${ROOT_DOMAIN}"
+log "Full Domain: $DOMAIN"
 checkvar "Instance" "INSTANCE_TYPE" "t2.medium"
 checkvar "Size" "SIZE" 20
 if [[ -n "$VPC_ID" ]]; then
@@ -58,10 +63,9 @@ if [[ -n "$AUTO_DEPLOY" ]]; then
   log "Auto Deploy: Yes"
   checkvar "Github User" "GH_USER"
   checkvar "Github Token" "GH_TOKEN"
-  checkvar "Deploy Whitelist" "DEPLOY_WHITELIST"
   checkvar "Deploy Secret" "DEPLOY_SECRET"
   checkvar "NODE_ENV" "NODE_ENV"
-  checkvar "Domain" "DOMAIN"
+  log "Deploy Domain:deploy.${DOMAIN}"
 else
   log "Auto Deploy: No"
 fi
@@ -75,9 +79,6 @@ if [[ -n "$LETSENCRYPT" ]]; then
 else
   log "Lets Encrypt: No"
 fi
-
-FULL_NAME=${ENVIRONMENT}-${SERVER_NAME}
-log "Full Server Name: $FULL_NAME"
 
 if [[ -n "$DEBUG" ]]; then
   log "debug mode. stopping"
@@ -209,3 +210,5 @@ fi
 
 log "Getting Public DNS"
 aws ec2 describe-instances --filters Name=tag:Name,Values="$FULL_NAME" --query "Reservations[].Instances[].PublicDnsName" --output text
+
+#TODO: add to route 53
