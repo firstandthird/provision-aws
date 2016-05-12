@@ -70,9 +70,16 @@ else
   log "Auto Deploy: No"
 fi
 if [[ -n "$MONGO" ]]; then
-  log "Mongo: Yes"
+  log "MongoDb: Yes"
 else
-  log "Mongo: No"
+  log "MongoDb: No"
+fi
+if [[ -n "$MYSQL" ]]; then
+  log "MySQL: Yes"
+  checkvar "MySQL Password" "MYSQL_PASS"
+  checkvar "MySQL Database" "MYSQL_DB"
+else
+  log "MySQL: No"
 fi
 if [[ -n "$LETSENCRYPT" ]]; then
   log "Lets Encrypt: Yes"
@@ -205,6 +212,26 @@ if [[ -n "$MONGO" ]]; then
       --name mongo \
       mongo --storageEngine wiredTiger
     test $? -eq 0 || abort "creating mongo failed"
+  fi
+fi
+
+if [[ -n "$MYSQL" ]]; then
+  out=$(docker inspect --type container mysql)
+  if [[ "$?" == 1 ]]; then
+    log "Setting up mysql"
+    docker run \
+      -d \
+      --name mysql \
+      -v /data/mysql:/var/lib/mysql \
+      -e MYSQL_ROOT_PASSWORD=$MYSQL_PASS \
+      -e MYSQL_DATABASE=$MYSQL_DB \
+      --log-driver awslogs \
+      --log-opt awslogs-group=$ENVIRONMENT \
+      --log-opt awslogs-stream=mysql \
+      --restart=always \
+      -p 3306:3306 \
+      mysql:5.7
+    test $? -eq 0 || abort "creating mysql failed"
   fi
 fi
 
