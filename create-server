@@ -34,7 +34,9 @@ else
   checkvar "AWS Secret Access Key" "AWS_SECRET_ACCESS_KEY"
 fi
 checkvar "AWS Region" "AWS_REGION" "us-east-1"
-AWS_DEFAULT_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION=$AWS_REGION
+export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 checkvar "Server Name" "SERVER_NAME" #apps1
 checkvar "Environment" "ENVIRONMENT" #prod
 FULL_NAME=${ENVIRONMENT}-${SERVER_NAME}
