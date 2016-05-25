@@ -17,8 +17,7 @@ nginx:
     - '443:443'
 dockergen:
   container_name: 'docker-gen'
-  command: '-notify-sighup nginx -watch -wait 5s:30s /etc/docker-gen/templates/nginx.tmpl /etc/nginx/conf.d/default.conf'
-  image: 'firstandthird/nginx-gen'
+  image: 'firstandthird/nginx-gen:0.0.2'
   restart: 'always'
   log_driver: 'awslogs'
   log_opt:
@@ -47,7 +46,7 @@ letsencrypt:
     #DEBUG: 'true'
 deploy:
   container_name: 'deploy'
-  image: 'shipment/deploy'
+  image: 'shipment/deploy:0.0.8'
   restart: 'always'
   environment:
     VIRTUAL_HOST: 'deploy.${DOMAIN}'
