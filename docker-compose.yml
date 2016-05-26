@@ -57,6 +57,7 @@ deploy:
     SECRET: '${DEPLOY_SECRET}'
     ENVIRONMENT: '${ENVIRONMENT}'
     SERVER_NAME: '${SERVER_NAME}'
+    LOG_GROUP: '${LOG_GROUP}'
     PORT: 5000
   log_driver: 'awslogs'
   log_opt:
