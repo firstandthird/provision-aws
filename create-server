@@ -137,7 +137,7 @@ if [[ "$?" == 1 ]]; then
       --engine-env "AWS_SECRET_ACCESS_KEY=$LOG_SECRET_KEY" \
       --engine-env "AWS_DEFAULT_REGION=$AWS_REGION" \
       --engine-opt "log-driver=awslogs" \
-      --engine-opt "log-opt awslogs-group=$ENVIRONMENT" \
+      --engine-opt "log-opt awslogs-group=$LOG_GROUP" \
       $FULL_NAME
   else
     docker-machine -s $MACHINE_PATH create \
@@ -149,7 +149,7 @@ if [[ "$?" == 1 ]]; then
       --engine-env "AWS_SECRET_ACCESS_KEY=$LOG_SECRET_KEY" \
       --engine-env "AWS_DEFAULT_REGION=$AWS_REGION" \
       --engine-opt "log-driver=awslogs" \
-      --engine-opt "log-opt awslogs-group=$ENVIRONMENT" \
+      --engine-opt "log-opt awslogs-group=$LOG_GROUP" \
       $FULL_NAME
   fi
   test $? -eq 0 || abort "docker-machine failed"
