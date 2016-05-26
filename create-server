@@ -41,9 +41,6 @@ checkvar "Server Name" "SERVER_NAME" #apps1
 checkvar "Environment" "ENVIRONMENT" #prod
 FULL_NAME=${ENVIRONMENT}-${SERVER_NAME}
 log "Full Server Name: $FULL_NAME"
-checkvar "Root Domain" "ROOT_DOMAIN"
-DOMAIN="${FULL_NAME}.${ROOT_DOMAIN}"
-log "Full Domain: $DOMAIN"
 checkvar "Instance" "INSTANCE_TYPE" "t2.medium"
 checkvar "Size" "SIZE" 20
 if [[ -n "$VPC_ID" ]]; then
@@ -54,23 +51,30 @@ if [[ -n "$VPC_ID" ]]; then
 else
   log "VPC: auto generated"
 fi
+checkvar "Log Group" "LOG_GROUP" "$ENVIRONMENT--"
 checkvar "Log Access Key" "LOG_ACCESS_KEY"
 checkvar "Log Secret Key" "LOG_SECRET_KEY"
 if [[ -n "$LOAD_BALANCER" ]]; then
   log "Load Balancer: Yes"
+  checkvar "Root Domain" "ROOT_DOMAIN"
+  DOMAIN="${FULL_NAME}.${ROOT_DOMAIN}"
+  log "Full Domain: $DOMAIN"
+  checkvar "Load Balancer Log Group" "LOG_GROUP_LB" "$ENVIRONMENT-nginx"
+
+  if [[ -n "$AUTO_DEPLOY" ]]; then
+    log "Auto Deploy: Yes"
+    checkvar "Github User" "GH_USER"
+    checkvar "Github Token" "GH_TOKEN"
+    checkvar "Deploy Secret" "DEPLOY_SECRET"
+    checkvar "NODE_ENV" "NODE_ENV"
+    log "Deploy Domain:deploy.${DOMAIN}"
+  else
+    log "Auto Deploy: No"
+  fi
 else
   log "Load Balancer: No"
 fi
-if [[ -n "$AUTO_DEPLOY" ]]; then
-  log "Auto Deploy: Yes"
-  checkvar "Github User" "GH_USER"
-  checkvar "Github Token" "GH_TOKEN"
-  checkvar "Deploy Secret" "DEPLOY_SECRET"
-  checkvar "NODE_ENV" "NODE_ENV"
-  log "Deploy Domain:deploy.${DOMAIN}"
-else
-  log "Auto Deploy: No"
-fi
+
 if [[ -n "$MONGO" ]]; then
   log "MongoDb: Yes"
 else
@@ -107,16 +111,13 @@ create_log_group() {
     log "Creating Log Group: $name"
     aws logs create-log-group --log-group-name $name
     test $? -eq 0 || abort "create log group failed"
+  else
+    log "Skipping log group $name, already created"
   fi
 }
 
-create_log_group $ENVIRONMENT
+create_log_group $LOG_GROUP
 #TODO: create app metrics
-
-if [[ -n "$LOAD_BALANCER" ]]; then
-  create_log_group $ENVIRONMENT-nginx
-  #TODO: create load balancer metrics
-fi
 
 out=$(docker-machine -s $MACHINE_PATH ls | grep $FULL_NAME)
 if [[ "$?" == 1 ]]; then
@@ -157,6 +158,8 @@ if [[ "$?" == 1 ]]; then
   docker-machine -s $MACHINE_PATH ssh $FULL_NAME "sudo apt-get install -y htop"
 
   test $? -eq 0 || abort "htop install failed"
+else
+  log "skipping EC2, already exists"
 fi
 
 
@@ -168,73 +171,54 @@ compose() {
   cmd=$@
   SERVER_NAME=$SERVER_NAME \
     ENVIRONMENT=$ENVIRONMENT \
+    LOG_GROUP=$LOG_GROUP \
+    LOG_GROUP_LB=$LOG_GROUP_LB \
     DEPLOY_SECRET=$DEPLOY_SECRET \
     DOMAIN=$DOMAIN \
     GH_TOKEN=$GH_TOKEN \
     GH_USER=$GH_USER \
     NODE_ENV=$NODE_ENV \
     AWS_REGION=$AWS_REGION \
+    MYSQL_PASS=$MYSQL_PASS \
+    MYSQL_DB=$MYSQL_DB \
     docker-compose -f $DIRNAME/docker-compose.yml $@
 }
-compose pull
-test $? -eq 0 || abort "compose pull failed"
 
 if [[ -n "$LOAD_BALANCER" ]]; then
   log "Setting up load balancer"
+  create_log_group $LOG_GROUP_LB
+  compose pull dockergen
   compose up -d dockergen
   test $? -eq 0 || abort "setting up dockergen failed"
+  compose pull nginx
   compose up -d nginx
   test $? -eq 0 || abort "setting up nginx failed"
 fi
 
 if [[ -n "$LETSENCRYPT" ]]; then
   log "Setting up lets encrypt"
+  compose pull letsencrypt
   compose up -d letsencrypt
   test $? -eq 0 || abort "setting up lets encrypt failed"
 fi
 
 if [[ -n "$AUTO_DEPLOY" ]]; then
   log "Setting up deploy"
+  compose pull deploy
   compose up -d deploy
   test $? -eq 0 || abort "setting up deploy failed"
 fi
 
 if [[ -n "$MONGO" ]]; then
-  out=$(docker inspect --type container mongo)
-  if [[ "$?" == 1 ]]; then
-    log "Setting up mongo"
-    docker run \
-      -d \
-      -v /data/db:/data/db \
-      --log-driver awslogs \
-      --log-opt awslogs-group=$ENVIRONMENT \
-      --log-opt awslogs-stream=mongo \
-      --restart=always \
-      -p 27017:27017 \
-      --name mongo \
-      mongo --storageEngine wiredTiger
-    test $? -eq 0 || abort "creating mongo failed"
-  fi
+  compose pull mongo
+  compose up -d mongo
+  test $? -eq 0 || abort "setting up mongo failed"
 fi
 
 if [[ -n "$MYSQL" ]]; then
-  out=$(docker inspect --type container mysql)
-  if [[ "$?" == 1 ]]; then
-    log "Setting up mysql"
-    docker run \
-      -d \
-      --name mysql \
-      -v /data/mysql:/var/lib/mysql \
-      -e MYSQL_ROOT_PASSWORD=$MYSQL_PASS \
-      -e MYSQL_DATABASE=$MYSQL_DB \
-      --log-driver awslogs \
-      --log-opt awslogs-group=$ENVIRONMENT \
-      --log-opt awslogs-stream=mysql \
-      --restart=always \
-      -p 3306:3306 \
-      mysql:5.7
-    test $? -eq 0 || abort "creating mysql failed"
-  fi
+  compose pull mysql
+  compose up -d mysql
+  test $? -eq 0 || abort "setting up mysql failed"
 fi
 
 log "Getting Public DNS"

@@ -5,7 +5,7 @@ nginx:
   log_driver: 'awslogs'
   log_opt:
     awslogs-region: '${AWS_REGION}'
-    awslogs-group: '${ENVIRONMENT}-nginx'
+    awslogs-group: '${LOG_GROUP_LB}'
     awslogs-stream: '${SERVER_NAME}-nginx'
   volumes:
     - '/etc/nginx/conf.d'
@@ -22,7 +22,7 @@ dockergen:
   log_driver: 'awslogs'
   log_opt:
     awslogs-region: '${AWS_REGION}'
-    awslogs-group: '${ENVIRONMENT}'
+    awslogs-group: '${LOG_GROUP}'
     awslogs-stream: '${SERVER_NAME}-docker-gen'
   volumes_from:
     - 'nginx'
@@ -34,7 +34,7 @@ letsencrypt:
   log_driver: 'awslogs'
   log_opt:
     awslogs-region: '${AWS_REGION}'
-    awslogs-group: '${ENVIRONMENT}'
+    awslogs-group: '${LOG_GROUP}'
     awslogs-stream: '${SERVER_NAME}-letsencrypt'
   volumes:
     - '/var/run/docker.sock:/var/run/docker.sock:ro'
@@ -61,9 +61,39 @@ deploy:
   log_driver: 'awslogs'
   log_opt:
     awslogs-region: '${AWS_REGION}'
-    awslogs-group: '${ENVIRONMENT}'
+    awslogs-group: '${LOG_GROUP}'
     awslogs-stream: '${SERVER_NAME}-deploy'
   ports:
     - '5000'
   volumes:
     - '/var/run/docker.sock:/var/run/docker.sock'
+mongo:
+  container_name: 'mongo'
+  restart: 'always'
+  image: 'mongo:3.2'
+  command: '--storageEngine wiredTiger'
+  volumes:
+    - '/data/db:/data/db'
+  ports:
+    - '27017:27017'
+  log_driver: 'awslogs'
+  log_opt:
+    awslogs-region: '${AWS_REGION}'
+    awslogs-group: '${LOG_GROUP}'
+    awslogs-stream: '${SERVER_NAME}-mongo'
+mysql:
+  container_name: 'mysql'
+  restart: 'always'
+  image: 'mysql:5.7'
+  volumes:
+    - '/data/mysql:/var/lib/mysql'
+  environment:
+    MYSQL_ROOT_PASSWORD: '${MYSQL_PASS}'
+    MYSQL_DATABASE: '${MYSQL_DB}'
+  ports:
+    - '3306:3306'
+  log_driver: 'awslogs'
+  log_opt:
+    awslogs-region: '${AWS_REGION}'
+    awslogs-group: '${LOG_GROUP}'
+    awslogs-stream: '${SERVER_NAME}-mysql'
