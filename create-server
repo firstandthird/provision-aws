@@ -67,8 +67,11 @@ if [[ -n "$LOAD_BALANCER" ]]; then
     checkvar "Github User" "GH_USER"
     checkvar "Github Token" "GH_TOKEN"
     checkvar "Deploy Secret" "DEPLOY_SECRET"
+    if [[ -n "$AUTO_DEPLOY_BRANCH" ]]; then
+      log "Deploy Branch: $AUTO_DEPLOY_BRANCH"
+    fi
     checkvar "NODE_ENV" "NODE_ENV"
-    log "Deploy Domain:deploy.${DOMAIN}"
+    log "Deploy Domain: deploy.${DOMAIN}"
   else
     log "Auto Deploy: No"
   fi
@@ -182,6 +185,7 @@ compose() {
     AWS_REGION=$AWS_REGION \
     MYSQL_PASS=$MYSQL_PASS \
     MYSQL_DB=$MYSQL_DB \
+    AUTO_DEPLOY_BRANCH=$AUTO_DEPLOY_BRANCH \
     docker-compose -f $DIRNAME/docker-compose.yml $@
 }
 

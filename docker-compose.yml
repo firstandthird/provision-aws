@@ -58,6 +58,7 @@ deploy:
     ENVIRONMENT: '${ENVIRONMENT}'
     SERVER_NAME: '${SERVER_NAME}'
     LOG_GROUP: '${LOG_GROUP}'
+    BRANCH_WHITELIST: '${AUTO_DEPLOY_BRANCH}'
     PORT: 5000
   log_driver: 'awslogs'
   log_opt:
