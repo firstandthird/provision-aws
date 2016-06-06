@@ -46,7 +46,7 @@ letsencrypt:
     #DEBUG: 'true'
 deploy:
   container_name: 'deploy'
-  image: 'shipment/deploy:0.0.8'
+  image: 'shipment/deploy:0.0.9'
   restart: 'always'
   environment:
     VIRTUAL_HOST: 'deploy.${DOMAIN}'
