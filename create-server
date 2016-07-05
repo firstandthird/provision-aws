@@ -70,6 +70,9 @@ if [[ -n "$LOAD_BALANCER" ]]; then
     if [[ -n "$AUTO_DEPLOY_BRANCH" ]]; then
       log "Deploy Branch: $AUTO_DEPLOY_BRANCH"
     fi
+    if [[ -n "$AUTO_DEPLOY_SLACK" ]]; then
+      log "Deploy Slack Hook: $AUTO_DEPLOY_SLACK"
+    fi
     checkvar "NODE_ENV" "NODE_ENV"
     log "Deploy Domain: deploy.${DOMAIN}"
   else
