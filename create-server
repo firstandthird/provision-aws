@@ -70,8 +70,8 @@ if [[ -n "$LOAD_BALANCER" ]]; then
     if [[ -n "$AUTO_DEPLOY_BRANCH" ]]; then
       log "Deploy Branch: $AUTO_DEPLOY_BRANCH"
     fi
-    if [[ -n "$AUTO_DEPLOY_SLACK" ]]; then
-      log "Deploy Slack Hook: $AUTO_DEPLOY_SLACK"
+    if [[ -n "$DEPLOY_SLACK" ]]; then
+      log "Deploy Slack Hook: $DEPLOY_SLACK"
     fi
     checkvar "NODE_ENV" "NODE_ENV"
     log "Deploy Domain: deploy.${DOMAIN}"
@@ -189,6 +189,7 @@ compose() {
     MYSQL_PASS=$MYSQL_PASS \
     MYSQL_DB=$MYSQL_DB \
     AUTO_DEPLOY_BRANCH=$AUTO_DEPLOY_BRANCH \
+    DEPLOY_SLACK=$DEPLOY_SLACK \
     docker-compose -f $DIRNAME/docker-compose.yml $@
 }
 
